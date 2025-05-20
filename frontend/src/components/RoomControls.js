@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-// eslint-disable-next-line no-unused-vars
 import {
   useRoomContext,
   useLocalParticipant,
   useRemoteParticipants,
   useTrackToggle,
   ConnectionState,
-  RoomAudioRenderer
+  RoomAudioRenderer,
+  AudioRenderer
 } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 import './RoomControls.css';
@@ -19,7 +19,17 @@ const RoomControls = ({ agentType = 'standard' }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
   const [transcription, setTranscription] = useState('');
-  const [volume, setVolume] = useState(100); // Default volume at 100%
+  
+  // Initialize volume from localStorage or default to 100%
+  const [volume, setVolume] = useState(() => {
+    try {
+      const savedVolume = localStorage.getItem('agentVolume');
+      return savedVolume ? parseInt(savedVolume, 10) : 100;
+    } catch (e) {
+      console.error('Failed to load volume preference:', e);
+      return 100;
+    }
+  });
 
   useEffect(() => {
     if (!room) return;
@@ -51,19 +61,14 @@ const RoomControls = ({ agentType = 'standard' }) => {
       }
     };
 
-    room.on('connectionStateChanged', (state) => {
+    const onConnectionStateChanged = (state) => {
       console.log('Room connection state changed:', state);
       if (state === ConnectionState.Disconnected) {
         setTranscription('');
+      } else if (state === ConnectionState.Connected) {
+        console.log('Successfully connected to room:', room.name);
       }
-    });
-
-    // Event listeners for track events are defined below
-
-    // Handle data messages (transcriptions)
-    room.on('dataReceived', onDataReceived);
-    room.on('participantConnected', onParticipantConnected);
-    room.on('participantDisconnected', onParticipantDisconnected);
+    };
 
     // Store references to event handlers for proper cleanup
     const onTrackPublished = (publication, participant) => {
@@ -75,27 +80,39 @@ const RoomControls = ({ agentType = 'standard' }) => {
 
       // If this is an audio track, make sure it's enabled and unmuted
       if (track.kind === 'audio') {
-        track.attach();
-        console.log('Audio track attached');
+        // Apply the current volume setting
+        const audioElement = track.attach();
+        audioElement.volume = volume / 100;
+        console.log('Audio track attached and volume set to:', volume / 100);
       }
     };
 
+    const onTrackUnsubscribed = (track, publication, participant) => {
+      console.log('Track unsubscribed:', track.kind, publication.trackName, 'from', participant.identity);
+      // Make sure to detach any elements
+      track.detach();
+    };
+
     // Register event listeners
+    room.on('connectionStateChanged', onConnectionStateChanged);
     room.on('trackPublished', onTrackPublished);
     room.on('trackSubscribed', onTrackSubscribed);
+    room.on('trackUnsubscribed', onTrackUnsubscribed);
     room.on('dataReceived', onDataReceived);
     room.on('participantConnected', onParticipantConnected);
     room.on('participantDisconnected', onParticipantDisconnected);
 
     return () => {
       // Clean up all event listeners with their specific handler functions
+      room.off('connectionStateChanged', onConnectionStateChanged);
       room.off('dataReceived', onDataReceived);
       room.off('participantConnected', onParticipantConnected);
       room.off('participantDisconnected', onParticipantDisconnected);
       room.off('trackPublished', onTrackPublished);
       room.off('trackSubscribed', onTrackSubscribed);
+      room.off('trackUnsubscribed', onTrackUnsubscribed);
     };
-  }, [room]);
+  }, [room, volume]);
 
   useEffect(() => {
     if (!localParticipant) return;
@@ -119,6 +136,10 @@ const RoomControls = ({ agentType = 'standard' }) => {
     const agent = remoteParticipants[0];
 
     console.log('Remote participant connected:', agent.identity);
+    console.log('Agent audio state:', {
+      audioEnabled: agent.audioEnabled,
+      isSpeaking: agent.isSpeaking
+    });
 
     // Log the available tracks from the agent
     const tracks = agent.getTracks();
@@ -130,6 +151,18 @@ const RoomControls = ({ agentType = 'standard' }) => {
       enabled: track.isEnabled
     })));
 
+    // Apply volume settings to any existing audio tracks
+    const audioTracks = tracks.filter(pub => pub.kind === 'audio' && pub.track);
+    audioTracks.forEach(pub => {
+      if (pub.track) {
+        // Detach and reattach to ensure we get the audio element
+        pub.track.detach();
+        const audioElement = pub.track.attach();
+        audioElement.volume = volume / 100;
+        console.log('Applied volume setting to existing track:', volume / 100);
+      }
+    });
+
     const onIsSpeakingChanged = (speaking) => {
       setIsAgentSpeaking(speaking);
       if (speaking) {
@@ -138,11 +171,21 @@ const RoomControls = ({ agentType = 'standard' }) => {
     };
 
     const onTrackSubscribed = (track) => {
-      console.log('Track subscribed:', track.kind, track.source);
+      console.log('Agent track subscribed:', track.kind, track.source);
+      
+      // For audio tracks, apply volume settings immediately
+      if (track.kind === 'audio') {
+        // First detach any existing elements to avoid duplicates
+        track.detach();
+        const audioElement = track.attach();
+        audioElement.volume = volume / 100;
+        console.log('Agent audio track attached with volume:', volume / 100);
+      }
     };
 
     const onTrackUnsubscribed = (track) => {
-      console.log('Track unsubscribed:', track.kind, track.source);
+      console.log('Agent track unsubscribed:', track.kind, track.source);
+      track.detach();
     };
 
     agent.on('isSpeakingChanged', onIsSpeakingChanged);
@@ -154,30 +197,60 @@ const RoomControls = ({ agentType = 'standard' }) => {
       agent.off('trackSubscribed', onTrackSubscribed);
       agent.off('trackUnsubscribed', onTrackUnsubscribed);
     };
-  }, [remoteParticipants]);
+  }, [remoteParticipants, volume]);
 
   // Function to handle volume change
   const handleVolumeChange = (e) => {
     const newVolume = parseInt(e.target.value, 10);
     setVolume(newVolume);
 
-    // Set volume for all audio elements
+    // Set volume for all audio elements - both existing and future ones
     const audioElements = document.querySelectorAll('audio');
     audioElements.forEach(audio => {
       audio.volume = newVolume / 100;
     });
 
+    // If we have remote participants with audio tracks, update their volume directly
+    if (remoteParticipants.length > 0) {
+      const agent = remoteParticipants[0];
+      const audioTracks = agent.getTracks().filter(pub => pub.kind === 'audio' && pub.track);
+      
+      audioTracks.forEach(pub => {
+        if (pub.track) {
+          const elements = pub.track.detach();
+          const audioElement = pub.track.attach();
+          audioElement.volume = newVolume / 100;
+        }
+      });
+    }
+
     console.log('Volume changed to:', newVolume);
+    
+    // Store the volume preference in localStorage for persistence
+    try {
+      localStorage.setItem('agentVolume', newVolume.toString());
+    } catch (e) {
+      console.error('Failed to save volume preference:', e);
+    }
   };
 
   return (
     <div className="room-controls">
-      {/* This component handles audio rendering for all participants */}
+      {/* RoomAudioRenderer: Handle all participant audio tracks */}
       <RoomAudioRenderer
-        // Add explicit options to ensure audio is properly rendered
+        // Enhanced options to ensure reliable audio rendering
         options={{
           autoAttach: true,
           attachVisibleOnly: false,
+          deviceId: 'default',
+          updateOnlyOn: [],
+        }}
+        onAttach={(track, element) => {
+          // Set volume for newly attached audio elements
+          if (element instanceof HTMLAudioElement) {
+            element.volume = volume / 100;
+            console.log(`Audio element attached and volume set to: ${volume / 100}`);
+          }
         }}
       />
 
