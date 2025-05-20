@@ -26,8 +26,6 @@ This repository includes:
 │   ├── realistic_agent/        # Agent with background audio
 │   └── standard_agent/         # Agent without background audio
 ├── frontend/                   # React web application
-├── multi_agent.py              # Original multi-agent example
-├── office_caller_agent.py      # Original office caller example
 ├── requirements.txt            # Python dependencies
 └── Dockerfile.example          # Example Docker configuration
 ```
