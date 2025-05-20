@@ -1,0 +1,40 @@
+.header {
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: 1rem 0;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+
+.nav a {
+  color: var(--secondary-color);
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.nav a:hover {
+  background-color: rgba(79, 70, 229, 0.1);
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  .logo h2 {
+    font-size: 1.3rem;
+  }
+  
+  .nav a {
+    padding: 0.5rem;
+  }
+}
