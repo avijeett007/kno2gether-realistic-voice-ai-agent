@@ -18,6 +18,7 @@ This repository includes:
 - **Natural Text Generation**: Uses OpenAI's GPT-4o-mini model
 - **Professional Voice**: Uses OpenAI's "Alloy" voice
 - **Interactive Frontend**: Modern web interface with agent selection and audio visualization
+- **Volume Control**: Adjustable volume control for agent voice with preference persistence
 
 ## Repository Structure
 
@@ -113,6 +114,20 @@ You'll need to generate LiveKit access tokens for client-side connections. For a
 ## YouTube Channel
 
 Visit [Kno2gether on YouTube](https://youtube.com/@kno2gether) for more examples and tutorials on voice AI technology.
+
+## Troubleshooting
+
+### Audio Issues
+
+If you experience issues with the agent's audio:
+
+1. **Check Browser Permissions**: Ensure your browser has microphone permissions enabled.
+2. **Volume Controls**: Use the volume slider to adjust the agent's volume.
+3. **Connection Status**: Look for connection logs in the browser console (F12 > Console).
+4. **Audio Track Subscription**: If audio isn't playing, try reconnecting to the agent.
+5. **Browser Compatibility**: Chrome and Edge are recommended for best compatibility.
+
+Console logs will show detailed information about audio track subscription and connection status, which can help diagnose issues.
 
 ## Contributing
 
