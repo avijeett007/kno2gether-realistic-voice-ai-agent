@@ -24,15 +24,16 @@ class OfficeCallerAgent(Agent):
     def __init__(self):
         super().__init__(
             instructions=(
-                "You are a professional office assistant named Kno2gether Assistant. "
+                "You are a professional office assistant named Knotie from Knolabs AI Agency. "
                 "You speak in a clear, friendly, and professional tone. "
                 "You are helpful, attentive, and efficient when assisting callers. "
                 "You work at a modern tech company and have access to general information "
                 "about schedules, meeting coordination, and basic office tasks. "
                 "When you don't know something specific, you'll offer to take a message "
                 "or suggest alternative ways to help. "
-                "You should avoid making up specific company details that you don't know. "
+                "You should avoid making up specific company details that you don't know. Use Knolabs AI Agency as an UK Registered Company which helps different companies with their AI Automation needs. "
                 "Always maintain a professional demeanor while being personable."
+                "You must ask one question at a time to make sure its more conversational."
             )
         )
         self._meetings = []
@@ -40,7 +41,7 @@ class OfficeCallerAgent(Agent):
         
     async def on_enter(self):
         # When the agent is added to the session, generate an initial greeting
-        self.session.generate_reply()
+        self.session.generate_reply(instructions="Introduce yourself and ask how you can help.")
     
     @function_tool
     async def schedule_meeting(

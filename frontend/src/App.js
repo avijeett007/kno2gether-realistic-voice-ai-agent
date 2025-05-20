@@ -24,24 +24,25 @@ function App() {
     setError(null);
 
     try {
-      // In a real app, you would generate a token from your backend
-      // For this demo, we'll simulate this with a timeout
+      // Get the room name based on the selected agent type
       const chosenRoom = selectedAgent === 'realistic'
         ? process.env.REACT_APP_REALISTIC_AGENT_ROOM
         : process.env.REACT_APP_STANDARD_AGENT_ROOM;
 
-      // Simulate token generation
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Fetch token from our backend API
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/get-token?room=${chosenRoom}`);
 
-      // For a real implementation, you would fetch a token from your server
-      // const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/get-token?room=${chosenRoom}`);
-      // const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
 
-      // For demo purposes, provide a mock token
-      // Creating a properly formatted token with the room name
-      const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MjQwMDAwMDAsImlzcyI6IkFQSV9LRVkiLCJuYmYiOjE2MjMwMDAwMDAsInN1YiI6InVzZXIiLCJyb29tIjoiJyArIGNob3NlblJvb20gKyAnIiwidmlkZW8iOnsicm9vbUpvaW4iOnRydWV9fQ.mockSignature';
+      const data = await response.json();
 
-      setToken(mockToken);
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setToken(data.accessToken);
       setRoomName(chosenRoom);
     } catch (err) {
       console.error('Error generating token:', err);
@@ -112,6 +113,28 @@ function App() {
                 audio={true}
                 video={false}
                 onDisconnected={handleDisconnect}
+                // Add these options to improve connection reliability
+                options={{
+                  adaptiveStream: true,
+                  dynacast: true,
+                  publishDefaults: {
+                    simulcast: true,
+                    dtx: true,
+                  },
+                  rtcConfig: {
+                    iceTransportPolicy: 'all',
+                    bundlePolicy: 'max-bundle',
+                    sdpSemantics: 'unified-plan',
+                    // Add STUN servers to help with connection
+                    iceServers: [
+                      { urls: 'stun:stun.l.google.com:19302' },
+                      { urls: 'stun:stun1.l.google.com:19302' },
+                    ],
+                  },
+                }}
+                // Add connection state logging
+                onConnected={() => console.log('Connected to LiveKit room')}
+                onError={(error) => console.error('LiveKit connection error:', error)}
               >
                 <RoomControls agentType={agentType} />
               </LiveKitRoom>

@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8080
+      - REACT_APP_LIVEKIT_URL="Your LiveKit URL"
+      - REACT_APP_REALISTIC_AGENT_ROOM=realistic-agent-room
+      - REACT_APP_STANDARD_AGENT_ROOM=standard-agent-room
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      - LIVEKIT_API_KEY="Your LiveKit API Key"
+      - LIVEKIT_API_SECRET="Your LiveKIT API Secret"
+      - LIVEKIT_URL="Your LiveKiT URL"
